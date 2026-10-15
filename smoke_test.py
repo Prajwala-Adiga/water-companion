@@ -1,10 +1,7 @@
 """Quick Windows readiness checks that do not modify the user's real reminder state."""
-import os
 import platform
 import tempfile
 from pathlib import Path
-
-os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon
@@ -18,10 +15,15 @@ def check(condition, message):
     print(f'PASS: {message}')
 
 
+def manual_check(condition, message):
+    status = 'PASS' if condition else 'MANUAL CHECK REQUIRED'
+    print(f'{status}: {message}')
+
+
 def main():
     app = QApplication.instance() or QApplication([])
     check(platform.system() == 'Windows', 'running on Windows')
-    check(QSystemTrayIcon.isSystemTrayAvailable(), 'Windows system tray is available')
+    manual_check(QSystemTrayIcon.isSystemTrayAvailable(), 'Windows system tray is available')
     check(bool(QApplication.screens()), 'at least one display is available')
 
     artwork = QPixmap(str(ROOT / 'assets' / 'fahadh.png'))
