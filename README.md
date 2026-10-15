@@ -20,6 +20,7 @@ The character remains hidden until a reminder is due. When he appears, drag to r
 - **Test reminder** shows a preview without changing the real reminder time.
 - **Pause reminders** stops reminders. Unpause to begin a new two-hour interval.
 - **Move to next monitor** cycles through connected monitors.
+- **Settings…** changes the reminder interval, both snooze durations, sound, preferred monitor, and start-with-Windows behavior.
 - **Quit** fully exits. Double-click START.bat or the packaged app to return.
 
 Double-click the tray icon to show a reminder preview without changing the real timer.

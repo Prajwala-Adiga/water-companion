@@ -8,11 +8,49 @@ import time
 
 from PySide6.QtCore import Qt, QTimer, QRect, QPoint, QLockFile, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QRegion, QTransform
-from PySide6.QtWidgets import QApplication, QWidget, QFrame, QLabel, QPushButton, QMenu, QSystemTrayIcon, QMessageBox
+from PySide6.QtWidgets import QApplication, QWidget, QFrame, QLabel, QPushButton, QMenu, QSystemTrayIcon, QMessageBox, QDialog, QFormLayout, QSpinBox, QCheckBox, QComboBox, QDialogButtonBox
 from schedule import Schedule
+from settings import Settings, set_start_with_windows
 
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
 DATA = Path(os.environ.get('LOCALAPPDATA', Path.home() / '.local' / 'share')) / 'FahadhWaterCompanion'
+
+
+class SettingsDialog(QDialog):
+    def __init__(self, settings, screens, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Water Companion settings')
+        layout = QFormLayout(self)
+        self.interval = QSpinBox()
+        self.interval.setRange(15, 720)
+        self.interval.setSuffix(' min')
+        self.interval.setValue(settings.interval_minutes)
+        self.short_snooze = QSpinBox()
+        self.short_snooze.setRange(1, 60)
+        self.short_snooze.setSuffix(' min')
+        self.short_snooze.setValue(settings.snooze_short_minutes)
+        self.long_snooze = QSpinBox()
+        self.long_snooze.setRange(1, 60)
+        self.long_snooze.setSuffix(' min')
+        self.long_snooze.setValue(settings.snooze_long_minutes)
+        self.sound = QCheckBox('Play a sound when the reminder appears')
+        self.sound.setChecked(settings.sound_enabled)
+        self.autostart = QCheckBox('Start quietly when I sign in to Windows')
+        self.autostart.setChecked(settings.start_with_windows)
+        self.monitor = QComboBox()
+        for index, screen in enumerate(screens):
+            self.monitor.addItem(f'{index + 1}: {screen.name()}')
+        self.monitor.setCurrentIndex(min(settings.preferred_monitor, len(screens) - 1))
+        layout.addRow('Reminder interval:', self.interval)
+        layout.addRow('First snooze:', self.short_snooze)
+        layout.addRow('Second snooze:', self.long_snooze)
+        layout.addRow('Preferred monitor:', self.monitor)
+        layout.addRow(self.sound)
+        layout.addRow(self.autostart)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
 
 class Companion(QWidget):
     def __init__(self, data_dir=DATA):
@@ -22,7 +60,9 @@ class Companion(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setFixedSize(400, 380)
-        self.schedule = Schedule(data_dir / 'reminder.json', time.time())
+        self.data_dir = data_dir
+        self.settings = Settings(data_dir / 'settings.json')
+        self.schedule = Schedule(data_dir / 'reminder.json', time.time(), self.settings.interval_minutes * 60)
         self.error_shown = False
         self.persist(self.schedule.save)
         self.direction, self.phase = 1, 0
@@ -61,16 +101,17 @@ class Companion(QWidget):
         self.done.clicked.connect(self.acknowledge)
         self.snooze_five = QPushButton('Snooze 5 min', self.board)
         self.snooze_five.setGeometry(124, 112, 116, 34)
-        self.snooze_five.clicked.connect(lambda: self.snooze_reminder(300))
+        self.snooze_five.clicked.connect(lambda: self.snooze_reminder(self.settings.snooze_short_minutes * 60))
         self.snooze_ten = QPushButton('Snooze 10 min', self.board)
         self.snooze_ten.setGeometry(248, 112, 120, 34)
-        self.snooze_ten.clicked.connect(lambda: self.snooze_reminder(600))
+        self.snooze_ten.clicked.connect(lambda: self.snooze_reminder(self.settings.snooze_long_minutes * 60))
         self.entrance = QPropertyAnimation(self, b'pos', self)
         self.entrance.setDuration(420)
         self.entrance.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.board.hide()
         self.menu = QMenu(self)
         self.menu.addAction('Test reminder', self.test_reminder)
+        self.menu.addAction('Settings…', self.open_settings)
         self.pause_action = self.menu.addAction('Pause reminders')
         self.pause_action.setCheckable(True)
         self.pause_action.setChecked(self.schedule.paused)
@@ -82,7 +123,8 @@ class Companion(QWidget):
         self.tray.setContextMenu(self.menu)
         self.tray.activated.connect(self.tray_clicked)
         self.tray.show()
-        self.monitor = QApplication.primaryScreen()
+        screens = QApplication.screens()
+        self.monitor = screens[min(self.settings.preferred_monitor, len(screens) - 1)]
         QApplication.instance().screenRemoved.connect(self.screen_removed)
         for screen in QApplication.screens():
             screen.availableGeometryChanged.connect(self.fit_screen)
@@ -91,6 +133,7 @@ class Companion(QWidget):
         self.check_timer.timeout.connect(self.check_due)
         self.check_timer.start(5000)
         self.check_due()
+        self.refresh_snooze_labels()
 
     def persist(self, operation):
         try:
@@ -157,6 +200,8 @@ class Companion(QWidget):
         self.entrance.setEndValue(destination)
         self.entrance.start()
         self.update_shape()
+        if kind == 'reminder' and self.settings.sound_enabled:
+            QApplication.beep()
 
     def dismiss_board(self):
         self.entrance.stop()
@@ -173,6 +218,31 @@ class Companion(QWidget):
     def snooze_reminder(self, seconds):
         self.persist(lambda: self.schedule.postpone(time.time(), seconds))
         self.dismiss_board()
+
+    def refresh_snooze_labels(self):
+        self.snooze_five.setText(f'Snooze {self.settings.snooze_short_minutes} min')
+        self.snooze_ten.setText(f'Snooze {self.settings.snooze_long_minutes} min')
+
+    def open_settings(self):
+        dialog = SettingsDialog(self.settings, QApplication.screens(), self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        previous_autostart = self.settings.start_with_windows
+        self.settings.values.update({
+            'interval_minutes': dialog.interval.value(),
+            'snooze_short_minutes': dialog.short_snooze.value(),
+            'snooze_long_minutes': dialog.long_snooze.value(),
+            'sound_enabled': dialog.sound.isChecked(),
+            'preferred_monitor': dialog.monitor.currentIndex(),
+            'start_with_windows': dialog.autostart.isChecked(),
+        })
+        self.schedule.interval = self.settings.interval_minutes * 60
+        self.monitor = QApplication.screens()[self.settings.preferred_monitor]
+        self.fit_screen()
+        self.refresh_snooze_labels()
+        self.persist(self.settings.save)
+        if previous_autostart != self.settings.start_with_windows:
+            self.persist(lambda: set_start_with_windows(self.settings.start_with_windows))
 
     def test_reminder(self):
         if self.board_kind != 'reminder':
