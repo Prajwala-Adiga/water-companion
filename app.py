@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import time
 
-from PySide6.QtCore import Qt, QTimer, QRect, QPoint, QLockFile
+from PySide6.QtCore import Qt, QTimer, QRect, QPoint, QLockFile, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QRegion, QTransform
 from PySide6.QtWidgets import QApplication, QWidget, QFrame, QLabel, QPushButton, QMenu, QSystemTrayIcon, QMessageBox
 from schedule import Schedule
@@ -45,7 +45,7 @@ class Companion(QWidget):
         self.setWindowIcon(self.icon)
         self.board = QFrame(self)
         self.board.setGeometry(8, 8, 384, 160)
-        self.board.setStyleSheet('QFrame {background:#fffaf0; border:2px solid #147d76; border-radius:16px;} QLabel {border:0; background:transparent; color:#183d3a;} QPushButton {background:#147d76;color:white;border:0;border-radius:8px;padding:8px;font-weight:600;} QPushButton:hover {background:#0b605b;}')
+        self.board.setStyleSheet('QFrame {background:#fffaf0; border:2px solid #147d76; border-radius:16px;} QLabel {border:0; background:transparent; color:#183d3a;} QPushButton {background:#147d76;color:white;border:0;border-radius:8px;padding:8px;font-weight:600;} QPushButton:hover {background:#0b605b;} QPushButton:pressed {background:#084d49;} QPushButton:focus {border:2px solid #f5b700;}')
         self.eyebrow = QLabel('A LITTLE PAUSE', self.board)
         self.eyebrow.setGeometry(16, 10, 350, 22)
         self.eyebrow.setFont(QFont('Segoe UI', 9, QFont.Weight.Bold))
@@ -65,6 +65,9 @@ class Companion(QWidget):
         self.snooze_ten = QPushButton('Snooze 10 min', self.board)
         self.snooze_ten.setGeometry(248, 112, 120, 34)
         self.snooze_ten.clicked.connect(lambda: self.snooze_reminder(600))
+        self.entrance = QPropertyAnimation(self, b'pos', self)
+        self.entrance.setDuration(420)
+        self.entrance.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.board.hide()
         self.menu = QMenu(self)
         self.menu.addAction('Test reminder', self.test_reminder)
@@ -138,8 +141,8 @@ class Companion(QWidget):
         self.board_kind = kind
         preview = kind == 'test'
         self.eyebrow.setText('PREVIEW • NO TIMER CHANGE' if preview else 'A LITTLE PAUSE')
-        self.title.setText('Time for some water')
-        self.detail.setText('Take a little water break. You’ve earned it.')
+        self.title.setText('Hydration check')
+        self.detail.setText('A few sips now will help keep you going.')
         self.done.setText('Close preview' if preview else 'Done')
         self.done.setGeometry(16, 112, 352 if preview else 100, 34)
         self.snooze_five.setVisible(not preview)
@@ -147,9 +150,16 @@ class Companion(QWidget):
         self.board.show()
         self.show()
         self.fit_screen()
+        destination = self.pos()
+        self.move(destination + QPoint(0, 30))
+        self.entrance.stop()
+        self.entrance.setStartValue(self.pos())
+        self.entrance.setEndValue(destination)
+        self.entrance.start()
         self.update_shape()
 
     def dismiss_board(self):
+        self.entrance.stop()
         self.board_kind = None
         self.board.hide()
         self.hide()
