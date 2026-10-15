@@ -47,20 +47,26 @@ class InterfaceTests(unittest.TestCase):
         import time
         with tempfile.TemporaryDirectory() as tmp:
             pet = Companion(Path(tmp))
-            pet.timer.stop()
             pet.check_timer.stop()
+            self.assertFalse(pet.isVisible())
             original = pet.schedule.next_due
-            pet.acknowledge()
             pet.test_reminder()
+            self.assertTrue(pet.isVisible())
             pet.acknowledge()
+            self.assertFalse(pet.isVisible())
             self.assertEqual(pet.schedule.next_due, original)
             pet.schedule.next_due = time.time() - 1
             pet.check_due()
             self.assertEqual(pet.board_kind, 'reminder')
             pet.test_reminder()
             self.assertEqual(pet.board_kind, 'reminder')
-            pet.snooze_reminder()
+            pet.snooze_reminder(300)
             self.assertIsNone(pet.board_kind)
+            self.assertFalse(pet.isVisible())
+            self.assertAlmostEqual(pet.schedule.next_due - time.time(), 300, delta=2)
+            pet.schedule.next_due = time.time() - 1
+            pet.check_due()
+            pet.snooze_reminder(600)
             self.assertAlmostEqual(pet.schedule.next_due - time.time(), 600, delta=2)
             pet.toggle_pause(True)
             self.assertTrue(pet.schedule.paused)

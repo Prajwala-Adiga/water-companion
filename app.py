@@ -21,16 +21,13 @@ class Companion(QWidget):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        self.setFixedSize(340, 380)
+        self.setFixedSize(400, 380)
         self.schedule = Schedule(data_dir / 'reminder.json', time.time())
         self.error_shown = False
         self.persist(self.schedule.save)
-        self.direction, self.phase, self.walking = 1, 0, True
+        self.direction, self.phase = 1, 0
         self.drag_offset = None
         self.board_kind = None
-        self.hidden_by_user = False
-        self.last_tick = time.monotonic()
-        self.frame_tick = 0.0
         sheet = QPixmap(str(ROOT / 'assets' / 'fahadh.png'))
         if sheet.isNull():
             raise RuntimeError('Character artwork is missing. Extract the entire ZIP before running.')
@@ -47,24 +44,27 @@ class Companion(QWidget):
         self.icon = QIcon(self.frames[3])
         self.setWindowIcon(self.icon)
         self.board = QFrame(self)
-        self.board.setGeometry(8, 8, 324, 160)
+        self.board.setGeometry(8, 8, 384, 160)
         self.board.setStyleSheet('QFrame {background:#fffaf0; border:2px solid #147d76; border-radius:16px;} QLabel {border:0; background:transparent; color:#183d3a;} QPushButton {background:#147d76;color:white;border:0;border-radius:8px;padding:8px;font-weight:600;} QPushButton:hover {background:#0b605b;}')
         self.eyebrow = QLabel('A LITTLE PAUSE', self.board)
-        self.eyebrow.setGeometry(16, 10, 290, 22)
+        self.eyebrow.setGeometry(16, 10, 350, 22)
         self.eyebrow.setFont(QFont('Segoe UI', 9, QFont.Weight.Bold))
         self.title = QLabel('Time for some water', self.board)
-        self.title.setGeometry(16, 34, 296, 30)
+        self.title.setGeometry(16, 34, 352, 30)
         self.title.setFont(QFont('Segoe UI', 16, QFont.Weight.Bold))
         self.detail = QLabel('Take a sip. Your next break is in two hours.', self.board)
-        self.detail.setGeometry(16, 66, 295, 35)
+        self.detail.setGeometry(16, 66, 352, 35)
         self.detail.setWordWrap(True)
         self.detail.setFont(QFont('Segoe UI', 10))
         self.done = QPushButton('Done', self.board)
-        self.done.setGeometry(16, 112, 135, 34)
+        self.done.setGeometry(16, 112, 100, 34)
         self.done.clicked.connect(self.acknowledge)
-        self.snooze = QPushButton('Snooze 10 min', self.board)
-        self.snooze.setGeometry(161, 112, 147, 34)
-        self.snooze.clicked.connect(self.snooze_reminder)
+        self.snooze_five = QPushButton('Snooze 5 min', self.board)
+        self.snooze_five.setGeometry(124, 112, 116, 34)
+        self.snooze_five.clicked.connect(lambda: self.snooze_reminder(300))
+        self.snooze_ten = QPushButton('Snooze 10 min', self.board)
+        self.snooze_ten.setGeometry(248, 112, 120, 34)
+        self.snooze_ten.clicked.connect(lambda: self.snooze_reminder(600))
         self.board.hide()
         self.menu = QMenu(self)
         self.menu.addAction('Test reminder', self.test_reminder)
@@ -72,11 +72,6 @@ class Companion(QWidget):
         self.pause_action.setCheckable(True)
         self.pause_action.setChecked(self.schedule.paused)
         self.pause_action.triggered.connect(self.toggle_pause)
-        self.walk_action = self.menu.addAction('Walk around')
-        self.walk_action.setCheckable(True)
-        self.walk_action.setChecked(True)
-        self.walk_action.triggered.connect(self.set_walking)
-        self.menu.addAction('Hide / show character', self.toggle_visible)
         self.menu.addAction('Move to next monitor', self.next_monitor)
         self.menu.addSeparator()
         self.menu.addAction('Quit', QApplication.instance().quit)
@@ -89,14 +84,9 @@ class Companion(QWidget):
         for screen in QApplication.screens():
             screen.availableGeometryChanged.connect(self.fit_screen)
         self.fit_screen()
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.tick)
-        self.timer.start(33)
         self.check_timer = QTimer(self)
         self.check_timer.timeout.connect(self.check_due)
-        self.check_timer.start(1000)
-        self.show()
-        self.show_board('welcome')
+        self.check_timer.start(5000)
         self.check_due()
 
     def persist(self, operation):
@@ -124,7 +114,7 @@ class Companion(QWidget):
             self.fit_screen()
 
     def current_pixmap(self):
-        frame = self.frames[[0, 1, 2, 1][self.phase % 4]] if self.walking and not self.board_kind and not self.drag_offset and not self.schedule.paused else self.frames[3]
+        frame = self.frames[3]
         return frame.transformed(QTransform().scale(-1, 1)) if self.direction < 0 else frame
 
     def sprite_rect(self, pix):
@@ -144,30 +134,16 @@ class Companion(QWidget):
         pix = self.current_pixmap()
         painter.drawPixmap(self.sprite_rect(pix).topLeft(), pix)
 
-    def tick(self):
-        now = time.monotonic()
-        dt, self.last_tick = min(now - self.last_tick, 0.1), now
-        if self.walking and not self.board_kind and not self.drag_offset and not self.schedule.paused and self.isVisible():
-            self.frame_tick += dt
-            if self.frame_tick >= 0.15:
-                self.phase += 1
-                self.frame_tick = 0
-            area = self.monitor.availableGeometry()
-            x = self.x() + self.direction * max(1, round(48 * dt))
-            low, high = area.left(), max(area.left(), area.right() - self.width() + 1)
-            if x <= low or x >= high:
-                self.direction *= -1
-            self.move(max(low, min(high, x)), area.bottom() - self.height() + 1)
-        self.update_shape()
-
     def show_board(self, kind):
         self.board_kind = kind
-        welcome = kind == 'welcome'
-        self.eyebrow.setText('HELLO, I’M YOUR WATER COMPANION' if welcome else ('PREVIEW • NO TIMER CHANGE' if kind == 'test' else 'A LITTLE PAUSE'))
-        self.title.setText('A sip every two hours' if welcome else 'Time for some water')
-        self.detail.setText('Drag me to move. Right-click for controls.' if welcome else 'Take a little water break. You’ve earned it.')
-        self.done.setText('Let’s go' if welcome else ('Close preview' if kind == 'test' else 'Done'))
-        self.snooze.setVisible(kind == 'reminder')
+        preview = kind == 'test'
+        self.eyebrow.setText('PREVIEW • NO TIMER CHANGE' if preview else 'A LITTLE PAUSE')
+        self.title.setText('Time for some water')
+        self.detail.setText('Take a little water break. You’ve earned it.')
+        self.done.setText('Close preview' if preview else 'Done')
+        self.done.setGeometry(16, 112, 352 if preview else 100, 34)
+        self.snooze_five.setVisible(not preview)
+        self.snooze_ten.setVisible(not preview)
         self.board.show()
         self.show()
         self.fit_screen()
@@ -176,8 +152,7 @@ class Companion(QWidget):
     def dismiss_board(self):
         self.board_kind = None
         self.board.hide()
-        if self.hidden_by_user:
-            self.hide()
+        self.hide()
         self.update_shape()
 
     def acknowledge(self):
@@ -185,8 +160,8 @@ class Companion(QWidget):
             self.persist(lambda: self.schedule.postpone(time.time()))
         self.dismiss_board()
 
-    def snooze_reminder(self):
-        self.persist(lambda: self.schedule.postpone(time.time(), 600))
+    def snooze_reminder(self, seconds):
+        self.persist(lambda: self.schedule.postpone(time.time(), seconds))
         self.dismiss_board()
 
     def test_reminder(self):
@@ -205,17 +180,9 @@ class Companion(QWidget):
         self.dismiss_board()
         self.check_due()
 
-    def set_walking(self, walking):
-        self.walking = walking
-
-    def toggle_visible(self):
-        self.hidden_by_user = not self.hidden_by_user
-        self.setVisible(not self.hidden_by_user)
-
     def tray_clicked(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
-            self.hidden_by_user = False
-            self.show()
+            self.test_reminder()
 
     def contextMenuEvent(self, event):
         self.menu.exec(event.globalPos())

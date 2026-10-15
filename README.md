@@ -1,27 +1,28 @@
 # Fahadh Water Companion
 
-A small offline Windows desktop companion with a cartoon Fahadh Faasil, walking animation, and a water reminder every two hours.
+A small offline Windows desktop companion that stays quietly in the system tray and appears with a cartoon Fahadh Faasil every two hours to remind you to drink water.
 
 ## Start here
 
 1. Extract this ZIP into a permanent folder, for example `Documents\WaterCompanion`. Do not run it from inside the ZIP.
 2. Install **Python 3.12 (64-bit)** from https://www.python.org/downloads/windows/ if needed. Include the Python launcher. Python 3.12.10 has a Windows installer.
 3. Double-click **SETUP.bat**. It creates a private Python environment in this folder and downloads the required packages. Internet is needed for this setup only.
-4. Double-click **START.bat**. Click **Let's go** on the welcome board.
+4. Double-click **START.bat**. The companion starts quietly in the Windows system tray.
 5. Right-click the character and select **Test reminder** to see a water break immediately.
 
-The character walks along the bottom of your primary monitor, above the taskbar. Drag to reposition horizontally or move to another monitor. On release it returns to the bottom edge. Right-click for all controls. A tray icon also appears beside the Windows clock; check the hidden-icons arrow if needed.
+The character remains hidden until a reminder is due. When he appears, drag to reposition horizontally or move to another monitor. On release he returns to the bottom edge. Right-click for controls. A tray icon remains beside the Windows clock; check the hidden-icons arrow if needed.
 
 ## Controls and timing
 
-- **Done** closes a real reminder and schedules the next one two hours later.
-- **Snooze 10 min** closes the reminder and brings it back ten minutes later.
+- **Done** closes a real reminder, hides the companion, and schedules the next one two hours later.
+- **Snooze 5 min** hides the companion and brings the reminder back five minutes later.
+- **Snooze 10 min** hides the companion and brings the reminder back ten minutes later.
 - **Test reminder** shows a preview without changing the real reminder time.
-- **Pause reminders** stops reminders and walking. Unpause to begin a new two-hour interval.
-- **Walk around** toggles walking without pausing reminders.
-- **Hide / show character** hides the companion between reminders. A due reminder still brings it back; Done or Snooze hides it again.
+- **Pause reminders** stops reminders. Unpause to begin a new two-hour interval.
 - **Move to next monitor** cycles through connected monitors.
 - **Quit** fully exits. Double-click START.bat or the packaged app to return.
+
+Double-click the tray icon to show a reminder preview without changing the real timer.
 
 A real reminder stays visible until you choose Done or Snooze. The timer is saved in `%LOCALAPPDATA%\FahadhWaterCompanion\reminder.json`. Quitting or restarting does not reset it. After sleep or time with the app closed, an overdue reminder appears once when the app is running again. It does not wake the computer or show reminders while the computer is off. Manual changes to the system clock also change wall-clock due timing.
 
