@@ -73,6 +73,6 @@ Remove that shortcut to disable automatic startup. No startup setting is changed
 
 Run `.venv\Scripts\python.exe smoke_test.py` for automated Windows readiness checks. Follow `SMOKE_TEST.md` for the short native tray, scaling, and multi-monitor checklist.
 
-Four automated tests passed under Linux with Qt's offscreen renderer: saved timing across restart/sleep, snooze and pause/resume, invalid-state recovery, and interface reminder/preview behavior. The reminder board was rendered and visually inspected.
+Six automated tests cover saved timing across restart/sleep, custom intervals, snooze and pause/resume, invalid-state recovery, persistent settings, and reminder/preview behavior. The Windows smoke test additionally verifies tray availability, artwork loading, hidden startup, preview display, and dismissal.
 
 Native Windows transparency, click-through outside the character, tray interaction, multi-monitor behavior, startup shortcuts, and the packaged executable still need a Windows smoke test. After building, check Test reminder, dragging, pause/resume, hide/show, quit/reopen, and launch the executable from its complete output folder. To test a real reminder quickly, quit, temporarily set `INTERVAL = 20` in schedule.py, remove the saved reminder state, and relaunch; restore the interval and reset the state afterward.
