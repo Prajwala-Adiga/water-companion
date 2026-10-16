@@ -71,6 +71,7 @@ class Companion(QWidget):
         self.motion = None
         self.reaction = None
         self.motion_target_x = 0
+        self.motion_frames_remaining = 0
         sheet = QPixmap(str(ROOT / 'assets' / 'fahadh.png'))
         if sheet.isNull():
             raise RuntimeError('Character artwork is missing. Extract the entire ZIP before running.')
@@ -139,7 +140,7 @@ class Companion(QWidget):
         self.check_timer.start(5000)
         self.motion_timer = QTimer(self)
         self.motion_timer.timeout.connect(self.animate_motion)
-        self.motion_timer.setInterval(90)
+        self.motion_timer.setInterval(220)
         self.check_due()
         self.refresh_snooze_labels()
 
@@ -215,6 +216,7 @@ class Companion(QWidget):
         self.move(self.motion_target_x - walk_distance, area.bottom() - self.height() + 1)
         self.motion = 'enter'
         self.phase = 0
+        self.motion_frames_remaining = 20
         self.show()
         self.motion_timer.start()
         self.update_shape()
@@ -236,9 +238,20 @@ class Companion(QWidget):
 
     def animate_motion(self):
         self.phase += 1
-        step = 5 if self.motion == 'enter' else -5
+        distance_left = self.motion_target_x - self.x()
+        if distance_left == 0:
+            step = 0
+        else:
+            step = round(distance_left / max(1, self.motion_frames_remaining))
+            if step == 0:
+                step = 1 if distance_left > 0 else -1
         next_x = self.x() + step
-        reached = next_x >= self.motion_target_x if step > 0 else next_x <= self.motion_target_x
+        self.motion_frames_remaining -= 1
+        reached = self.motion_frames_remaining <= 0 or distance_left == 0
+        if step > 0:
+            reached = reached or next_x >= self.motion_target_x
+        elif step < 0:
+            reached = reached or next_x <= self.motion_target_x
         self.move(self.motion_target_x if reached else next_x, self.y())
         self.update_shape()
         if not reached:
@@ -258,6 +271,7 @@ class Companion(QWidget):
         walk_distance = max(160, min(280, round(self.monitor.logicalDotsPerInchX() * 5.5 / 2.54)))
         self.motion_target_x = self.x() - walk_distance
         self.phase = 0
+        self.motion_frames_remaining = 20
         self.motion_timer.start()
         self.update_shape()
 
