@@ -33,7 +33,7 @@ CHARACTERS = {
         'reminder': 'ranga-reminder.png',
         'happy': 'ranga-happy.png',
         'snooze': 'ranga-warning.png',
-        'reminders': ['Eyy… drink water!', 'Water. Now.', 'I am asking nicely… for now.', 'Hydration first. Everything else later.'],
+        'reminders': ['Eyy… drink water!', 'Drink water. Now.', 'I am asking nicely… drink water.', 'Eda Mone... Drink water.'],
         'done': ['Good. Very good.', 'That’s my friend.', 'Excellent decision.', 'Okay… you may continue.'],
         'snoozed': ['Five minutes. Not one minute more.', 'I’ll come back. Be ready.', 'Again snooze? I am watching.', 'This is your final warning!'],
     },
@@ -88,7 +88,7 @@ class Companion(QWidget):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        self.setFixedSize(400, 380)
+        self.setFixedSize(400, 420)
         self.data_dir = data_dir
         self.settings = Settings(data_dir / 'settings.json')
         self.schedule = Schedule(data_dir / 'reminder.json', time.time(), self.settings.interval_minutes * 60)
@@ -108,26 +108,27 @@ class Companion(QWidget):
         self.icon = QIcon(self.frames[3])
         self.setWindowIcon(self.icon)
         self.board = QFrame(self)
-        self.board.setGeometry(8, 8, 384, 160)
+        self.board.setGeometry(8, 8, 384, 190)
         self.board.setStyleSheet('QFrame {background:#fffaf0; border:2px solid #147d76; border-radius:16px;} QLabel {border:0; background:transparent; color:#183d3a;} QPushButton {background:#147d76;color:white;border:0;border-radius:8px;padding:8px;font-weight:600;} QPushButton:hover {background:#0b605b;} QPushButton:pressed {background:#084d49;} QPushButton:focus {border:2px solid #f5b700;}')
         self.eyebrow = QLabel('A LITTLE PAUSE', self.board)
         self.eyebrow.setGeometry(16, 10, 350, 22)
         self.eyebrow.setFont(QFont('Segoe UI', 9, QFont.Weight.Bold))
         self.title = QLabel('Time for some water', self.board)
-        self.title.setGeometry(16, 34, 352, 30)
+        self.title.setGeometry(16, 34, 352, 50)
+        self.title.setWordWrap(True)
         self.title.setFont(QFont('Segoe UI', 16, QFont.Weight.Bold))
         self.detail = QLabel('Take a sip. Your next break is in two hours.', self.board)
-        self.detail.setGeometry(16, 66, 352, 35)
+        self.detail.setGeometry(16, 88, 352, 34)
         self.detail.setWordWrap(True)
         self.detail.setFont(QFont('Segoe UI', 10))
         self.done = QPushButton('Done', self.board)
-        self.done.setGeometry(16, 112, 100, 34)
+        self.done.setGeometry(16, 142, 100, 34)
         self.done.clicked.connect(self.acknowledge)
         self.snooze_five = QPushButton('Snooze 5 min', self.board)
-        self.snooze_five.setGeometry(124, 112, 116, 34)
+        self.snooze_five.setGeometry(124, 142, 116, 34)
         self.snooze_five.clicked.connect(lambda: self.snooze_reminder(self.settings.snooze_short_minutes * 60))
         self.snooze_ten = QPushButton('Snooze 10 min', self.board)
-        self.snooze_ten.setGeometry(248, 112, 120, 34)
+        self.snooze_ten.setGeometry(248, 142, 120, 34)
         self.snooze_ten.clicked.connect(lambda: self.snooze_reminder(self.settings.snooze_long_minutes * 60))
         self.board.hide()
         self.menu = QMenu(self)
@@ -270,7 +271,8 @@ class Companion(QWidget):
         self.title.setText(random.choice(profile['reminders']))
         self.detail.setText('Choose wisely.' if self.settings.character == 'ranga' else 'A few sips now will help keep you going.')
         self.done.setText('Done')
-        self.done.setGeometry(16, 112, 100, 34)
+        self.done.setGeometry(16, 142, 100, 34)
+        self.done.show()
         self.snooze_five.show()
         self.snooze_ten.show()
         self.board.show()
