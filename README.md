@@ -1,27 +1,29 @@
 # Fahadh Water Companion
 
-A small offline Windows desktop companion with a cartoon Fahadh Faasil, walking animation, and a water reminder every two hours.
+A small offline Windows desktop companion that stays quietly in the system tray and appears with a cartoon Fahadh Faasil every two hours to remind you to drink water.
 
 ## Start here
 
 1. Extract this ZIP into a permanent folder, for example `Documents\WaterCompanion`. Do not run it from inside the ZIP.
 2. Install **Python 3.12 (64-bit)** from https://www.python.org/downloads/windows/ if needed. Include the Python launcher. Python 3.12.10 has a Windows installer.
 3. Double-click **SETUP.bat**. It creates a private Python environment in this folder and downloads the required packages. Internet is needed for this setup only.
-4. Double-click **START.bat**. Click **Let's go** on the welcome board.
+4. Double-click **START.bat**. The companion starts quietly in the Windows system tray.
 5. Right-click the character and select **Test reminder** to see a water break immediately.
 
-The character walks along the bottom of your primary monitor, above the taskbar. Drag to reposition horizontally or move to another monitor. On release it returns to the bottom edge. Right-click for all controls. A tray icon also appears beside the Windows clock; check the hidden-icons arrow if needed.
+The character remains hidden until a reminder is due. When he appears, drag to reposition horizontally or move to another monitor. On release he returns to the bottom edge. Right-click for controls. A tray icon remains beside the Windows clock; check the hidden-icons arrow if needed.
 
 ## Controls and timing
 
-- **Done** closes a real reminder and schedules the next one two hours later.
-- **Snooze 10 min** closes the reminder and brings it back ten minutes later.
+- **Done** closes a real reminder, hides the companion, and schedules the next one two hours later.
+- **Snooze 5 min** hides the companion and brings the reminder back five minutes later.
+- **Snooze 10 min** hides the companion and brings the reminder back ten minutes later.
 - **Test reminder** shows a preview without changing the real reminder time.
-- **Pause reminders** stops reminders and walking. Unpause to begin a new two-hour interval.
-- **Walk around** toggles walking without pausing reminders.
-- **Hide / show character** hides the companion between reminders. A due reminder still brings it back; Done or Snooze hides it again.
+- **Pause reminders** stops reminders. Unpause to begin a new two-hour interval.
 - **Move to next monitor** cycles through connected monitors.
+- **Settings…** changes the reminder interval, both snooze durations, sound, preferred monitor, and start-with-Windows behavior.
 - **Quit** fully exits. Double-click START.bat or the packaged app to return.
+
+Double-click the tray icon to show a reminder preview without changing the real timer.
 
 A real reminder stays visible until you choose Done or Snooze. The timer is saved in `%LOCALAPPDATA%\FahadhWaterCompanion\reminder.json`. Quitting or restarting does not reset it. After sleep or time with the app closed, an overdue reminder appears once when the app is running again. It does not wake the computer or show reminders while the computer is off. Manual changes to the system clock also change wall-clock due timing.
 
@@ -36,6 +38,8 @@ After setup, double-click **BUILD_EXE.bat**. This downloads the packaging tool a
 Keep the **entire** `dist\FahadhWaterCompanion` folder, including `_internal`, together. You can copy that folder elsewhere and launch the `.exe` without installing Python there. Source files remain available for future customization. Re-run BUILD_EXE.bat after code or artwork changes.
 
 The ZIP contains source and build scripts; it does **not** contain a prebuilt Windows executable. The executable must be built and tested on Windows.
+
+For a complete release, run **BUILD_RELEASE.bat**. It runs the tests, builds the versioned application with its Windows icon, and creates `release\FahadhWaterCompanion-Portable-1.0.0.zip`. If Inno Setup 6 is installed, it also creates `release\FahadhWaterCompanion-Setup-1.0.0.exe`.
 
 ## Optional: start when you sign in
 
@@ -67,6 +71,8 @@ Remove that shortcut to disable automatic startup. No startup setting is changed
 
 ## Validation
 
-Four automated tests passed under Linux with Qt's offscreen renderer: saved timing across restart/sleep, snooze and pause/resume, invalid-state recovery, and interface reminder/preview behavior. The reminder board was rendered and visually inspected.
+Run `.venv\Scripts\python.exe smoke_test.py` for automated Windows readiness checks. Follow `SMOKE_TEST.md` for the short native tray, scaling, and multi-monitor checklist.
+
+Six automated tests cover saved timing across restart/sleep, custom intervals, snooze and pause/resume, invalid-state recovery, persistent settings, and reminder/preview behavior. The Windows smoke test additionally verifies tray availability, artwork loading, hidden startup, preview display, and dismissal.
 
 Native Windows transparency, click-through outside the character, tray interaction, multi-monitor behavior, startup shortcuts, and the packaged executable still need a Windows smoke test. After building, check Test reminder, dragging, pause/resume, hide/show, quit/reopen, and launch the executable from its complete output folder. To test a real reminder quickly, quit, temporarily set `INTERVAL = 20` in schedule.py, remove the saved reminder state, and relaunch; restore the interval and reset the state afterward.

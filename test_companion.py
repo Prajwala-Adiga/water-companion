@@ -4,8 +4,27 @@ import tempfile
 import unittest
 from pathlib import Path
 from schedule import Schedule, INTERVAL
+from settings import Settings
 
 class TimingTests(unittest.TestCase):
+    def test_custom_interval(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            s = Schedule(Path(tmp) / 'state.json', 100, interval=30 * 60)
+            self.assertEqual(s.next_due, 1900)
+            s.postpone(200)
+            self.assertEqual(s.next_due, 2000)
+
+    def test_settings_validation_and_round_trip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'settings.json'
+            settings = Settings(path)
+            settings.values['interval_minutes'] = 90
+            settings.values['sound_enabled'] = True
+            settings.save()
+            restored = Settings(path)
+            self.assertEqual(restored.interval_minutes, 90)
+            self.assertTrue(restored.sound_enabled)
+
     def test_restart_and_sleep(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'state.json'
@@ -47,20 +66,26 @@ class InterfaceTests(unittest.TestCase):
         import time
         with tempfile.TemporaryDirectory() as tmp:
             pet = Companion(Path(tmp))
-            pet.timer.stop()
             pet.check_timer.stop()
+            self.assertFalse(pet.isVisible())
             original = pet.schedule.next_due
-            pet.acknowledge()
             pet.test_reminder()
+            self.assertTrue(pet.isVisible())
             pet.acknowledge()
+            self.assertFalse(pet.isVisible())
             self.assertEqual(pet.schedule.next_due, original)
             pet.schedule.next_due = time.time() - 1
             pet.check_due()
             self.assertEqual(pet.board_kind, 'reminder')
             pet.test_reminder()
             self.assertEqual(pet.board_kind, 'reminder')
-            pet.snooze_reminder()
+            pet.snooze_reminder(300)
             self.assertIsNone(pet.board_kind)
+            self.assertFalse(pet.isVisible())
+            self.assertAlmostEqual(pet.schedule.next_due - time.time(), 300, delta=2)
+            pet.schedule.next_due = time.time() - 1
+            pet.check_due()
+            pet.snooze_reminder(600)
             self.assertAlmostEqual(pet.schedule.next_due - time.time(), 600, delta=2)
             pet.toggle_pause(True)
             self.assertTrue(pet.schedule.paused)
