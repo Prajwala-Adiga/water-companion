@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import time
 
-from PySide6.QtCore import Qt, QTimer, QRect, QPoint, QLockFile, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, QTimer, QRect, QPoint, QLockFile
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap, QRegion, QTransform
 from PySide6.QtWidgets import QApplication, QWidget, QFrame, QLabel, QPushButton, QMenu, QSystemTrayIcon, QMessageBox, QDialog, QFormLayout, QSpinBox, QCheckBox, QComboBox, QDialogButtonBox
 from schedule import Schedule
@@ -68,6 +68,9 @@ class Companion(QWidget):
         self.direction, self.phase = 1, 0
         self.drag_offset = None
         self.board_kind = None
+        self.motion = None
+        self.reaction = None
+        self.motion_target_x = 0
         sheet = QPixmap(str(ROOT / 'assets' / 'fahadh.png'))
         if sheet.isNull():
             raise RuntimeError('Character artwork is missing. Extract the entire ZIP before running.')
@@ -81,6 +84,11 @@ class Companion(QWidget):
                 raise RuntimeError('Character frame is empty')
             cell = cell.copy(bounds).scaledToHeight(194, Qt.TransformationMode.SmoothTransformation)
             self.frames.append(cell)
+        self.expression_frames = {
+            'reminder': self.load_sprite('fahadh-reminder.png'),
+            'happy': self.load_sprite('fahadh-happy.png'),
+            'snooze': self.load_sprite('fahadh-snooze.png'),
+        }
         self.icon = QIcon(self.frames[3])
         self.setWindowIcon(self.icon)
         self.board = QFrame(self)
@@ -105,9 +113,6 @@ class Companion(QWidget):
         self.snooze_ten = QPushButton('Snooze 10 min', self.board)
         self.snooze_ten.setGeometry(248, 112, 120, 34)
         self.snooze_ten.clicked.connect(lambda: self.snooze_reminder(self.settings.snooze_long_minutes * 60))
-        self.entrance = QPropertyAnimation(self, b'pos', self)
-        self.entrance.setDuration(420)
-        self.entrance.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.board.hide()
         self.menu = QMenu(self)
         self.menu.addAction('Test reminder', self.test_reminder)
@@ -132,8 +137,20 @@ class Companion(QWidget):
         self.check_timer = QTimer(self)
         self.check_timer.timeout.connect(self.check_due)
         self.check_timer.start(5000)
+        self.motion_timer = QTimer(self)
+        self.motion_timer.timeout.connect(self.animate_motion)
+        self.motion_timer.setInterval(80)
         self.check_due()
         self.refresh_snooze_labels()
+
+    def load_sprite(self, filename):
+        pix = QPixmap(str(ROOT / 'assets' / filename))
+        if pix.isNull():
+            raise RuntimeError(f'Character artwork is missing: {filename}')
+        bounds = QRegion(pix.mask()).boundingRect()
+        if bounds.isEmpty():
+            raise RuntimeError(f'Character artwork is empty: {filename}')
+        return pix.copy(bounds).scaledToHeight(194, Qt.TransformationMode.SmoothTransformation)
 
     def persist(self, operation):
         try:
@@ -160,7 +177,14 @@ class Companion(QWidget):
             self.fit_screen()
 
     def current_pixmap(self):
-        frame = self.frames[3]
+        if self.motion:
+            frame = self.frames[[0, 1, 2, 1][self.phase % 4]]
+        elif self.reaction:
+            frame = self.expression_frames[self.reaction]
+        elif self.board.isVisible():
+            frame = self.expression_frames['reminder']
+        else:
+            frame = self.frames[3]
         return frame.transformed(QTransform().scale(-1, 1)) if self.direction < 0 else frame
 
     def sprite_rect(self, pix):
@@ -170,7 +194,7 @@ class Companion(QWidget):
         pix = self.current_pixmap()
         rect = self.sprite_rect(pix)
         region = QRegion(pix.mask()).translated(rect.topLeft())
-        if self.board_kind:
+        if self.board.isVisible():
             region = region.united(QRegion(self.board.geometry()))
         self.setMask(region)
         self.update()
@@ -182,42 +206,94 @@ class Companion(QWidget):
 
     def show_board(self, kind):
         self.board_kind = kind
+        self.reaction = None
+        self.board.hide()
+        self.direction = 1
+        area = self.monitor.availableGeometry()
+        walk_distance = max(160, min(280, round(self.monitor.logicalDotsPerInchX() * 5.5 / 2.54)))
+        self.motion_target_x = area.left() + 12
+        self.move(self.motion_target_x - walk_distance, area.bottom() - self.height() + 1)
+        self.motion = 'enter'
+        self.phase = 0
+        self.show()
+        self.motion_timer.start()
+        self.update_shape()
+
+    def present_board(self):
+        kind = self.board_kind
         preview = kind == 'test'
         self.eyebrow.setText('PREVIEW • NO TIMER CHANGE' if preview else 'A LITTLE PAUSE')
-        self.title.setText('Hydration check')
+        self.title.setText('Did you drink water?')
         self.detail.setText('A few sips now will help keep you going.')
         self.done.setText('Close preview' if preview else 'Done')
         self.done.setGeometry(16, 112, 352 if preview else 100, 34)
         self.snooze_five.setVisible(not preview)
         self.snooze_ten.setVisible(not preview)
         self.board.show()
-        self.show()
-        self.fit_screen()
-        destination = self.pos()
-        self.move(destination + QPoint(0, 30))
-        self.entrance.stop()
-        self.entrance.setStartValue(self.pos())
-        self.entrance.setEndValue(destination)
-        self.entrance.start()
         self.update_shape()
         if kind == 'reminder' and self.settings.sound_enabled:
             QApplication.beep()
 
-    def dismiss_board(self):
-        self.entrance.stop()
+    def animate_motion(self):
+        self.phase += 1
+        step = 8 if self.motion == 'enter' else -8
+        next_x = self.x() + step
+        reached = next_x >= self.motion_target_x if step > 0 else next_x <= self.motion_target_x
+        self.move(self.motion_target_x if reached else next_x, self.y())
+        self.update_shape()
+        if not reached:
+            return
+        self.motion_timer.stop()
+        if self.motion == 'enter':
+            self.motion = None
+            self.direction = 1
+            self.present_board()
+        else:
+            self.finish_exit()
+
+    def begin_exit(self):
+        self.reaction = None
+        self.motion = 'exit'
+        self.direction = -1
+        walk_distance = max(160, min(280, round(self.monitor.logicalDotsPerInchX() * 5.5 / 2.54)))
+        self.motion_target_x = self.x() - walk_distance
+        self.phase = 0
+        self.motion_timer.start()
+        self.update_shape()
+
+    def react_then_exit(self, reaction):
+        self.motion_timer.stop()
+        self.motion = None
+        self.board.hide()
+        self.board_kind = None
+        self.reaction = reaction
+        self.direction = 1
+        self.update_shape()
+        QTimer.singleShot(900, self.begin_exit)
+
+    def finish_exit(self):
+        self.motion_timer.stop()
+        self.motion = None
+        self.reaction = None
         self.board_kind = None
         self.board.hide()
         self.hide()
         self.update_shape()
 
+    def dismiss_board(self):
+        self.finish_exit()
+
     def acknowledge(self):
         if self.board_kind == 'reminder':
             self.persist(lambda: self.schedule.postpone(time.time()))
-        self.dismiss_board()
+            self.react_then_exit('happy')
+        else:
+            self.board.hide()
+            self.begin_exit()
 
     def snooze_reminder(self, seconds):
         self.persist(lambda: self.schedule.postpone(time.time(), seconds))
-        self.dismiss_board()
+        self.react_then_exit('snooze')
 
     def refresh_snooze_labels(self):
         self.snooze_five.setText(f'Snooze {self.settings.snooze_short_minutes} min')
@@ -245,7 +321,7 @@ class Companion(QWidget):
             self.persist(lambda: set_start_with_windows(self.settings.start_with_windows))
 
     def test_reminder(self):
-        if self.board_kind != 'reminder':
+        if self.board_kind is None:
             self.show_board('test')
 
     def check_due(self):
@@ -268,7 +344,7 @@ class Companion(QWidget):
         self.menu.exec(event.globalPos())
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton and not self.motion:
             self.drag_offset = event.globalPosition().toPoint() - self.pos()
 
     def mouseMoveEvent(self, event):

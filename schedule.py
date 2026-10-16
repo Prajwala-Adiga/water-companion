@@ -1,7 +1,9 @@
 """Persistent wall-clock scheduling, independent of the GUI."""
 import json
 import math
+import os
 from pathlib import Path
+import time
 
 INTERVAL = 2 * 60 * 60
 
@@ -25,7 +27,14 @@ class Schedule:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temp = self.path.with_suffix('.tmp')
         temp.write_text(json.dumps({'next_due': self.next_due, 'paused': self.paused}), encoding='utf-8')
-        temp.replace(self.path)
+        for attempt in range(4):
+            try:
+                os.replace(temp, self.path)
+                break
+            except PermissionError:
+                if attempt == 3:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
 
     def due(self, now):
         return not self.paused and now >= self.next_due
