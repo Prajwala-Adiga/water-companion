@@ -139,7 +139,7 @@ class Companion(QWidget):
         self.check_timer.start(5000)
         self.motion_timer = QTimer(self)
         self.motion_timer.timeout.connect(self.animate_motion)
-        self.motion_timer.setInterval(80)
+        self.motion_timer.setInterval(90)
         self.check_due()
         self.refresh_snooze_labels()
 
@@ -236,7 +236,7 @@ class Companion(QWidget):
 
     def animate_motion(self):
         self.phase += 1
-        step = 8 if self.motion == 'enter' else -8
+        step = 5 if self.motion == 'enter' else -5
         next_x = self.x() + step
         reached = next_x >= self.motion_target_x if step > 0 else next_x <= self.motion_target_x
         self.move(self.motion_target_x if reached else next_x, self.y())
