@@ -5,6 +5,7 @@ __pycache__/
 build/
 dist/
 *.spec
+release/
 
 .review-temp/
 water-companion-preview.png
