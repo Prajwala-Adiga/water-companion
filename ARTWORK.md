@@ -15,3 +15,14 @@ The reminder, happy, and snooze frames were generated with the built-in image-ge
 - `assets/fahadh-snooze.png`: gently disappointed, humorous pout after Snooze.
 
 All three prompts requested a single full-body character matching the existing teal shirt, cream trousers, brown shoes, facial hair, hairstyle, and 3D caricature style on a transparent background, with no text, scenery, props, watermark, cropped limbs, or additional people.
+
+## Ranga character
+
+The optional Ranga profile was generated with the built-in image-generation tool from three user-supplied *Aavesham* references. The references anchored the sunglasses and moustache, white shirt and heavy gold jewelry, and full-body swagger respectively.
+
+- `assets/ranga-walk.png`: four equal-width walking cells without a weapon.
+- `assets/ranga-reminder.png`: raised-finger hydration warning with a small stylized knife held safely downward.
+- `assets/ranga-warning.png`: closed/lowered knife and wagging-finger Snooze warning.
+- `assets/ranga-happy.png`: friendly approval while putting the knife back into his pocket.
+
+The prompts requested a polished transparent 3D caricature with a white shirt, dark trousers, brown shoes, layered gold chains, rings, bracelets, aviator sunglasses, thick moustache, and theatrical swagger. They explicitly excluded injury, blood, attacks, aimed weapons, victims, scenery, text, watermarks, and cropped limbs.

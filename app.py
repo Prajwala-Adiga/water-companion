@@ -3,6 +3,7 @@ import logging
 import math
 import os
 from pathlib import Path
+import random
 import sys
 import time
 
@@ -14,6 +15,29 @@ from settings import Settings, set_start_with_windows
 
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
 DATA = Path(os.environ.get('LOCALAPPDATA', Path.home() / '.local' / 'share')) / 'FahadhWaterCompanion'
+
+CHARACTERS = {
+    'friendly': {
+        'name': 'Friendly Fahadh',
+        'walk': 'fahadh.png',
+        'reminder': 'fahadh-reminder.png',
+        'happy': 'fahadh-happy.png',
+        'snooze': 'fahadh-snooze.png',
+        'reminders': ['Did you drink water?'],
+        'done': ['Nice work!', 'That’s better.', 'Good choice!'],
+        'snoozed': ['Okay, I’ll be back.', 'Five more minutes, then!', 'Don’t forget me.'],
+    },
+    'ranga': {
+        'name': 'Ranga mode',
+        'walk': 'ranga-walk.png',
+        'reminder': 'ranga-reminder.png',
+        'happy': 'ranga-happy.png',
+        'snooze': 'ranga-warning.png',
+        'reminders': ['Eyy… drink water!', 'Water. Now.', 'I am asking nicely… for now.', 'Hydration first. Everything else later.'],
+        'done': ['Good. Very good.', 'That’s my friend.', 'Excellent decision.', 'Okay… you may continue.'],
+        'snoozed': ['Five minutes. Not one minute more.', 'I’ll come back. Be ready.', 'Again snooze? I am watching.', 'This is your final warning!'],
+    },
+}
 
 
 class SettingsDialog(QDialog):
@@ -41,10 +65,15 @@ class SettingsDialog(QDialog):
         for index, screen in enumerate(screens):
             self.monitor.addItem(f'{index + 1}: {screen.name()}')
         self.monitor.setCurrentIndex(min(settings.preferred_monitor, len(screens) - 1))
+        self.character = QComboBox()
+        for key, profile in CHARACTERS.items():
+            self.character.addItem(profile['name'], key)
+        self.character.setCurrentIndex(max(0, self.character.findData(settings.character)))
         layout.addRow('Reminder interval:', self.interval)
         layout.addRow('First snooze:', self.short_snooze)
         layout.addRow('Second snooze:', self.long_snooze)
         layout.addRow('Preferred monitor:', self.monitor)
+        layout.addRow('Character:', self.character)
         layout.addRow(self.sound)
         layout.addRow(self.autostart)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
@@ -72,24 +101,10 @@ class Companion(QWidget):
         self.reaction = None
         self.motion_target_x = 0
         self.motion_frames_remaining = 0
-        sheet = QPixmap(str(ROOT / 'assets' / 'fahadh.png'))
-        if sheet.isNull():
-            raise RuntimeError('Character artwork is missing. Extract the entire ZIP before running.')
         self.frames = []
-        for i in range(4):
-            cell = sheet.copy(i * sheet.width() // 4, 0, sheet.width() // 4, sheet.height())
-            # Align visible bodies using alpha, while retaining the supplied artwork.
-            image = cell.toImage()
-            bounds = QRegion(cell.mask()).boundingRect()
-            if bounds.isEmpty():
-                raise RuntimeError('Character frame is empty')
-            cell = cell.copy(bounds).scaledToHeight(194, Qt.TransformationMode.SmoothTransformation)
-            self.frames.append(cell)
-        self.expression_frames = {
-            'reminder': self.load_sprite('fahadh-reminder.png'),
-            'happy': self.load_sprite('fahadh-happy.png'),
-            'snooze': self.load_sprite('fahadh-snooze.png'),
-        }
+        self.expression_frames = {}
+        self.apply_character(self.settings.character)
+
         self.icon = QIcon(self.frames[3])
         self.setWindowIcon(self.icon)
         self.board = QFrame(self)
@@ -143,6 +158,32 @@ class Companion(QWidget):
         self.motion_timer.setInterval(220)
         self.check_due()
         self.refresh_snooze_labels()
+
+    def apply_character(self, character):
+        profile = CHARACTERS.get(character, CHARACTERS['friendly'])
+        sheet = QPixmap(str(ROOT / 'assets' / profile['walk']))
+        if sheet.isNull():
+            raise RuntimeError('Character artwork is missing. Extract the entire ZIP before running.')
+        self.frames = []
+        for i in range(4):
+            cell = sheet.copy(i * sheet.width() // 4, 0, sheet.width() // 4, sheet.height())
+            # Align visible bodies using alpha, while retaining the supplied artwork.
+            image = cell.toImage()
+            bounds = QRegion(cell.mask()).boundingRect()
+            if bounds.isEmpty():
+                raise RuntimeError('Character frame is empty')
+            cell = cell.copy(bounds).scaledToHeight(194, Qt.TransformationMode.SmoothTransformation)
+            self.frames.append(cell)
+        self.expression_frames = {
+            'reminder': self.load_sprite(profile['reminder']),
+            'happy': self.load_sprite(profile['happy']),
+            'snooze': self.load_sprite(profile['snooze']),
+        }
+        if hasattr(self, 'tray'):
+            self.icon = QIcon(self.frames[3])
+            self.setWindowIcon(self.icon)
+            self.tray.setIcon(self.icon)
+            self.update_shape()
 
     def load_sprite(self, filename):
         pix = QPixmap(str(ROOT / 'assets' / filename))
@@ -224,9 +265,10 @@ class Companion(QWidget):
     def present_board(self):
         kind = self.board_kind
         preview = kind == 'test'
-        self.eyebrow.setText('PREVIEW • NO TIMER CHANGE' if preview else 'A LITTLE PAUSE')
-        self.title.setText('Did you drink water?')
-        self.detail.setText('A few sips now will help keep you going.')
+        profile = CHARACTERS[self.settings.character]
+        self.eyebrow.setText('PREVIEW • NO TIMER CHANGE' if preview else ('RANGA’S HYDRATION CHECK' if self.settings.character == 'ranga' else 'A LITTLE PAUSE'))
+        self.title.setText(random.choice(profile['reminders']))
+        self.detail.setText('Choose wisely.' if self.settings.character == 'ranga' else 'A few sips now will help keep you going.')
         self.done.setText('Done')
         self.done.setGeometry(16, 112, 100, 34)
         self.snooze_five.show()
@@ -265,6 +307,9 @@ class Companion(QWidget):
             self.finish_exit()
 
     def begin_exit(self):
+        if self.reaction is None and self.board_kind is None and not self.isVisible():
+            return
+        self.board.hide()
         self.reaction = None
         self.motion = 'exit'
         self.direction = -1
@@ -278,12 +323,20 @@ class Companion(QWidget):
     def react_then_exit(self, reaction):
         self.motion_timer.stop()
         self.motion = None
-        self.board.hide()
         self.board_kind = None
         self.reaction = reaction
         self.direction = 1
+        profile = CHARACTERS[self.settings.character]
+        responses = profile['done'] if reaction == 'happy' else profile['snoozed']
+        self.eyebrow.setText('RANGA APPROVES' if self.settings.character == 'ranga' and reaction == 'happy' else ('FINAL WARNING' if self.settings.character == 'ranga' else 'SEE YOU SOON'))
+        self.title.setText(random.choice(responses))
+        self.detail.setText('Hydration acknowledged.' if reaction == 'happy' else 'I’ll return after the snooze.')
+        self.done.hide()
+        self.snooze_five.hide()
+        self.snooze_ten.hide()
+        self.board.show()
         self.update_shape()
-        QTimer.singleShot(900, self.begin_exit)
+        QTimer.singleShot(1600, self.begin_exit)
 
     def finish_exit(self):
         self.motion_timer.stop()
@@ -323,17 +376,19 @@ class Companion(QWidget):
             'sound_enabled': dialog.sound.isChecked(),
             'preferred_monitor': dialog.monitor.currentIndex(),
             'start_with_windows': dialog.autostart.isChecked(),
+            'character': dialog.character.currentData(),
         })
         self.schedule.interval = self.settings.interval_minutes * 60
         self.monitor = QApplication.screens()[self.settings.preferred_monitor]
         self.fit_screen()
         self.refresh_snooze_labels()
+        self.apply_character(self.settings.character)
         self.persist(self.settings.save)
         if previous_autostart != self.settings.start_with_windows:
             self.persist(lambda: set_start_with_windows(self.settings.start_with_windows))
 
     def test_reminder(self):
-        if self.board_kind is None:
+        if self.board_kind is None and not self.motion and not self.reaction:
             self.show_board('test')
 
     def check_due(self):
@@ -341,7 +396,7 @@ class Companion(QWidget):
             self.show_board('reminder')
         remaining = max(0, math.ceil((self.schedule.next_due - time.time()) / 60))
         text = 'Paused' if self.schedule.paused else ('Water break is due' if remaining == 0 else f'Next water break in {remaining} min')
-        self.tray.setToolTip('Fahadh Water Companion — ' + text)
+        self.tray.setToolTip(CHARACTERS[self.settings.character]['name'] + ' — ' + text)
 
     def toggle_pause(self, paused):
         self.persist(lambda: self.schedule.pause(paused, time.time()))

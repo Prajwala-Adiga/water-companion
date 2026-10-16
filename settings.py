@@ -13,6 +13,7 @@ DEFAULTS = {
     'sound_enabled': False,
     'preferred_monitor': 0,
     'start_with_windows': False,
+    'character': 'friendly',
 }
 
 
@@ -41,6 +42,8 @@ class Settings:
         for key in ('sound_enabled', 'start_with_windows'):
             if not isinstance(self.values[key], bool):
                 self.values[key] = DEFAULTS[key]
+        if self.values['character'] not in ('friendly', 'ranga'):
+            self.values['character'] = DEFAULTS['character']
 
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)

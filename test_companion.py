@@ -20,10 +20,12 @@ class TimingTests(unittest.TestCase):
             settings = Settings(path)
             settings.values['interval_minutes'] = 90
             settings.values['sound_enabled'] = True
+            settings.values['character'] = 'ranga'
             settings.save()
             restored = Settings(path)
             self.assertEqual(restored.interval_minutes, 90)
             self.assertTrue(restored.sound_enabled)
+            self.assertEqual(restored.character, 'ranga')
 
     def test_restart_and_sleep(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,6 +70,9 @@ class InterfaceTests(unittest.TestCase):
             pet = Companion(Path(tmp))
             pet.check_timer.stop()
             self.assertFalse(pet.isVisible())
+            pet.settings.values['character'] = 'ranga'
+            pet.apply_character('ranga')
+            self.assertEqual(pet.settings.character, 'ranga')
             original = pet.schedule.next_due
             pet.test_reminder()
             self.assertTrue(pet.isVisible())
