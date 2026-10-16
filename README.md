@@ -17,7 +17,7 @@ The character remains hidden until a reminder is due. He takes a short walk in f
 - **Done** closes a real reminder, hides the companion, and schedules the next one two hours later.
 - **Snooze 5 min** hides the companion and brings the reminder back five minutes later.
 - **Snooze 10 min** hides the companion and brings the reminder back ten minutes later.
-- **Test reminder** shows a preview without changing the real reminder time.
+- **Test reminder** demonstrates the full walk, buttons, reactions, and exit without changing the real reminder time.
 - **Pause reminders** stops reminders. Unpause to begin a new two-hour interval.
 - **Move to next monitor** cycles through connected monitors.
 - **Settings…** changes the reminder interval, both snooze durations, sound, preferred monitor, and start-with-Windows behavior.

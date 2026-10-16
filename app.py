@@ -225,10 +225,10 @@ class Companion(QWidget):
         self.eyebrow.setText('PREVIEW • NO TIMER CHANGE' if preview else 'A LITTLE PAUSE')
         self.title.setText('Did you drink water?')
         self.detail.setText('A few sips now will help keep you going.')
-        self.done.setText('Close preview' if preview else 'Done')
-        self.done.setGeometry(16, 112, 352 if preview else 100, 34)
-        self.snooze_five.setVisible(not preview)
-        self.snooze_ten.setVisible(not preview)
+        self.done.setText('Done')
+        self.done.setGeometry(16, 112, 100, 34)
+        self.snooze_five.show()
+        self.snooze_ten.show()
         self.board.show()
         self.update_shape()
         if kind == 'reminder' and self.settings.sound_enabled:
@@ -286,13 +286,11 @@ class Companion(QWidget):
     def acknowledge(self):
         if self.board_kind == 'reminder':
             self.persist(lambda: self.schedule.postpone(time.time()))
-            self.react_then_exit('happy')
-        else:
-            self.board.hide()
-            self.begin_exit()
+        self.react_then_exit('happy')
 
     def snooze_reminder(self, seconds):
-        self.persist(lambda: self.schedule.postpone(time.time(), seconds))
+        if self.board_kind == 'reminder':
+            self.persist(lambda: self.schedule.postpone(time.time(), seconds))
         self.react_then_exit('snooze')
 
     def refresh_snooze_labels(self):
