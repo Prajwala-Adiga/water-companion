@@ -40,7 +40,7 @@ Keep the **entire** `dist\FahadhWaterCompanion` folder, including `_internal`, t
 
 The ZIP contains source and build scripts; it does **not** contain a prebuilt Windows executable. The executable must be built and tested on Windows.
 
-For a complete release, run **BUILD_RELEASE.bat**. It runs the tests, builds the versioned application with its Windows icon, and creates `release\FahadhWaterCompanion-Portable-1.0.0.zip`. If Inno Setup 6 is installed, it also creates `release\FahadhWaterCompanion-Setup-1.0.0.exe`.
+For a complete release, set the release number in `VERSION`, then run **BUILD_RELEASE.bat**. It validates the version, runs the tests, builds the application with its Windows icon, and creates a versioned portable ZIP. If Inno Setup 6 is installed, it also creates the matching Windows installer. Follow `RELEASE_CHECKLIST.md` before publishing either file.
 
 ## Optional: start when you sign in
 
