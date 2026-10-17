@@ -1,5 +1,7 @@
 #define AppName "Fahadh Water Companion"
-#define AppVersion "1.0.0"
+#ifndef AppVersion
+  #error AppVersion must be supplied by BUILD_RELEASE.bat
+#endif
 #define AppPublisher "Prajwala Adiga"
 #define AppExeName "FahadhWaterCompanion.exe"
 
@@ -21,6 +23,9 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
+CloseApplications=yes
+RestartApplications=no
+SetupLogging=yes
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional options:"
@@ -36,3 +41,6 @@ Name: "{userstartup}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: startu
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}\_internal"

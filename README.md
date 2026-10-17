@@ -10,17 +10,18 @@ A small offline Windows desktop companion that stays quietly in the system tray 
 4. Double-click **START.bat**. The companion starts quietly in the Windows system tray.
 5. Right-click the character and select **Test reminder** to see a water break immediately.
 
-The character remains hidden until a reminder is due. When he appears, drag to reposition horizontally or move to another monitor. On release he returns to the bottom edge. Right-click for controls. A tray icon remains beside the Windows clock; check the hidden-icons arrow if needed.
+The character remains hidden until a reminder is due. He takes a short walk in from the left, stops to ask whether you drank water, reacts to your choice, and walks back out. When he is standing, drag to reposition horizontally or move to another monitor. On release he returns to the bottom edge. Right-click for controls. A tray icon remains beside the Windows clock; check the hidden-icons arrow if needed.
 
 ## Controls and timing
 
 - **Done** closes a real reminder, hides the companion, and schedules the next one two hours later.
 - **Snooze 5 min** hides the companion and brings the reminder back five minutes later.
 - **Snooze 10 min** hides the companion and brings the reminder back ten minutes later.
-- **Test reminder** shows a preview without changing the real reminder time.
+- **Test reminder** demonstrates the full walk, buttons, reactions, and exit without changing the real reminder time.
 - **Pause reminders** stops reminders. Unpause to begin a new two-hour interval.
 - **Move to next monitor** cycles through connected monitors.
 - **Settings…** changes the reminder interval, both snooze durations, sound, preferred monitor, and start-with-Windows behavior.
+- **Character** in Settings switches between Friendly Fahadh and Ranga mode. Each character has distinct artwork and randomized reminder, Done, and Snooze dialogue.
 - **Quit** fully exits. Double-click START.bat or the packaged app to return.
 
 Double-click the tray icon to show a reminder preview without changing the real timer.
@@ -39,7 +40,7 @@ Keep the **entire** `dist\FahadhWaterCompanion` folder, including `_internal`, t
 
 The ZIP contains source and build scripts; it does **not** contain a prebuilt Windows executable. The executable must be built and tested on Windows.
 
-For a complete release, run **BUILD_RELEASE.bat**. It runs the tests, builds the versioned application with its Windows icon, and creates `release\FahadhWaterCompanion-Portable-1.0.0.zip`. If Inno Setup 6 is installed, it also creates `release\FahadhWaterCompanion-Setup-1.0.0.exe`.
+For a complete release, set the release number in `VERSION`, then run **BUILD_RELEASE.bat**. It validates the version, runs the tests, builds the application with its Windows icon, and creates a versioned portable ZIP. If Inno Setup 6 is installed, it also creates the matching Windows installer. Follow `RELEASE_CHECKLIST.md` before publishing either file.
 
 ## Optional: start when you sign in
 
@@ -65,6 +66,7 @@ Remove that shortcut to disable automatic startup. No startup setting is changed
 - `app.py`: interface, movement, board text, and controls.
 - `schedule.py`: the interval is `INTERVAL = 2 * 60 * 60` seconds.
 - `assets/fahadh.png`: transparent four-cell sprite sheet. The first three cells are walking poses; the fourth is the standing pose. The app slices and aligns them at runtime.
+- `assets/fahadh-reminder.png`, `fahadh-happy.png`, and `fahadh-snooze.png`: transparent expression frames shown at the reminder and before walking out.
 - `requirements.txt`: tested GUI dependency version.
 - `test_companion.py`: scheduling and GUI behavior checks.
 - `ARTWORK.md`: artwork generation details and prompt.

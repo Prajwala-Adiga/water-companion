@@ -6,6 +6,7 @@ build/
 dist/
 *.spec
 release/
+.build-temp/
 
 .review-temp/
 water-companion-preview.png

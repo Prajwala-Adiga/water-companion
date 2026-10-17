@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 
 
 DEFAULTS = {
@@ -12,6 +13,7 @@ DEFAULTS = {
     'sound_enabled': False,
     'preferred_monitor': 0,
     'start_with_windows': False,
+    'character': 'friendly',
 }
 
 
@@ -40,12 +42,21 @@ class Settings:
         for key in ('sound_enabled', 'start_with_windows'):
             if not isinstance(self.values[key], bool):
                 self.values[key] = DEFAULTS[key]
+        if self.values['character'] not in ('friendly', 'ranga'):
+            self.values['character'] = DEFAULTS['character']
 
     def save(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temp = self.path.with_suffix('.tmp')
         temp.write_text(json.dumps(self.values, indent=2), encoding='utf-8')
-        temp.replace(self.path)
+        for attempt in range(4):
+            try:
+                os.replace(temp, self.path)
+                break
+            except PermissionError:
+                if attempt == 3:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
 
     def __getattr__(self, name):
         if name in self.values:
